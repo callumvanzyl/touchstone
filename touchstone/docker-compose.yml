@@ -1,0 +1,76 @@
+version: "3.8"
+
+x-app-variables: &app-variables
+  env: ${ENV}
+
+  spring.spring.application.name: ${SPRING_APPLICATION_NAME}
+  spring.data.mongodb.uri: ${SPRING_DATA_MONGODB_URL}
+  spring.servlet.multipart.max-file-size: ${SPRING_SERVLET_MAX_FILE_SIZE}
+  spring.servlet.multipart.max-request-size: ${SPRING_SERVLET_MAX_REQUEST_SIZE}
+  server.port: ${SERVER_PORT}
+  server.servlet.context-path: ${SERVER_SERVLET_CONTEXT_PATH}
+
+  touchstone.data-path: ${TOUCHSTONE_DATA_PATH}
+
+  chrome.web-driver-path: ${CHROME_WEB_DRIVER_PATH}
+
+  docker.enabled: ${DOCKER_ENABLED}
+  docker.daemon.url: ${DOCKER_DAEMON_URL}
+  docker.daemon.cert-path: ${DOCKER_DAEMON_CERT_PATH}
+  docker.registry.username: ${DOCKER_REGISTRY_USERNAME}
+  docker.registry.password: ${DOCKER_REGISTRY_PASSWORD}
+  docker.registry.url: ${DOCKER_REGISTRY_URL}
+
+  security.jwt.secret: ${SECURITY_JWT_SECRET}
+  security.jwt.expiration-time: ${SECURITY_JWT_EXPIRATION_TIME}
+
+x-db-variables: &db-variables
+  MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+  MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+
+services:
+
+  app:
+    build: .
+    container_name: touchstone-app
+    restart: unless-stopped
+    environment:
+      <<: *app-variables
+    volumes:
+      - app-data:${TOUCHSTONE_DATA_PATH}
+    networks:
+      - touchstone-network
+    ports:
+      - 8081:${SERVER_PORT}
+    userns_mode: host
+
+  db:
+    image: mongo
+    container_name: touchstone-db
+    restart: unless-stopped
+    environment:
+      <<: *db-variables
+    volumes:
+      - db-data:/data/db
+    networks:
+      - touchstone-network
+
+  dockerd:
+    image: docksal/socat
+    container_name: touchstone-dockerd
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:${DOCKER_SOCKET_PATH}
+    networks:
+      - touchstone-network
+
+volumes:
+  app-data:
+    name: tch-app-data
+  db-data:
+    name: tch-db-data
+
+networks:
+  touchstone-network:
+    name: touchstone-network
+    driver: bridge
